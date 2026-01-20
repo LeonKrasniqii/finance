@@ -10,7 +10,7 @@ def register_user(name: str, email: str, password: str):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Check if email already exists
+    # email
     cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
     existing_user = cursor.fetchone()
 
@@ -21,7 +21,7 @@ def register_user(name: str, email: str, password: str):
             detail="Email already registered"
         )
 
-    # Hash password
+    #  password
     hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
     cursor.execute("""

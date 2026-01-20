@@ -6,7 +6,7 @@ from datetime import datetime
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
-# Pydantic models for request and response validation
+# Pydantic 
 class ExpenseCreate(BaseModel):
     user_id: int
     title: str

@@ -6,7 +6,7 @@ from datetime import datetime
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-# Pydantic models
+# Pydantic 
 class UserResponse(BaseModel):
     id: int
     name: str
@@ -23,9 +23,9 @@ class ExpenseResponse(BaseModel):
     date: datetime
 
 
-# ---------------------
+
 # USER MANAGEMENT
-# ---------------------
+
 @router.get("/users", response_model=List[UserResponse])
 def get_all_users():
     """
@@ -56,9 +56,9 @@ def delete_user(user_id: int):
     return
 
 
-# ---------------------
+
 # EXPENSE MANAGEMENT
-# ---------------------
+
 @router.get("/expenses", response_model=List[ExpenseResponse])
 def get_all_expenses():
     """
@@ -89,9 +89,9 @@ def delete_expense(expense_id: int):
     return
 
 
-# ---------------------
+
 # ADMIN REPORTS
-# ---------------------
+
 @router.get("/reports/total")
 def get_system_total_expenses():
     """
