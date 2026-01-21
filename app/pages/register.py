@@ -1,26 +1,20 @@
 import streamlit as st
-import requests
+from app.services.auth_service import register_user
 
-st.set_page_config(page_title="Register")
+def show():
+    st.title("Register")
 
-st.title("📝 Register")
+    username = st.text_input("Username", key="register_username")
+    email = st.text_input("Email", key="register_email")
+    password = st.text_input("Password", type="password", key="register_password")
 
-username = st.text_input("Username")
-email = st.text_input("Email")
-password = st.text_input("Password", type="password")
+    if st.button("Register", key="register_button"):
+        if not username or not email or not password:
+            st.error("All fields are required")
+            return
 
-if st.button("Register"):
-    response = requests.post(
-        "http://127.0.0.1:8000/auth/register",
-        params={
-            "username": username,
-            "email": email,
-            "password": password
-        }
-    )
-
-    if response.status_code == 200:
-        st.success("Account created. Please login.")
-        st.switch_page("templates/login.py")
-    else:
-        st.error("Registration failed")
+        try:
+            register_user(username, email, password)
+            st.success("Account created successfully. You can now log in.")
+        except Exception as e:
+            st.error("Username or email already exists")

@@ -1,16 +1,4 @@
-# app/models/category.py
-
 class Category:
-    """
-    Expense category model
-    """
-
     def __init__(self, id: int, name: str):
         self.id = id
         self.name = name
-
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "name": self.name
-        }

@@ -1,10 +1,10 @@
 # app/database/db_init.py
 
-import sqlite3
+from app.database.db_connection import get_db_connection
 
 
 def init_db():
-    conn = sqlite3.connect("finance.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # 🔥 ENABLE FOREIGN KEYS

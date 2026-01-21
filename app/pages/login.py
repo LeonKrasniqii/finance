@@ -1,23 +1,24 @@
 import streamlit as st
-import requests
+from app.services.auth_service import login_user
 
-st.set_page_config(page_title="Login")
+def show():
+    st.title("Login")
 
-st.title("🔐 Login")
+    if "user" not in st.session_state:
+        st.session_state["user"] = None
 
-username = st.text_input("Username")
-password = st.text_input("Password", type="password")
+    username = st.text_input("Username", key="login_username")
+    password = st.text_input("Password", type="password", key="login_password")
 
-if st.button("Login"):
-    response = requests.post(
-        "http://127.0.0.1:8000/auth/login",
-        params={"username": username, "password": password}
-    )
+    if st.button("Login", key="login_button"):
+        if not username or not password:
+            st.error("Please enter both username and password")
+            return
 
-    if response.status_code == 200:
-        token = response.json()["access_token"]
-        st.success("Login successful")
-        st.session_state["token"] = token
-        st.switch_page("templates/dashboard.py")
-    else:
-        st.error("Invalid credentials")
+        user = login_user(username, password)
+        if user:
+            st.session_state["user"] = dict(user)
+            st.success("Logged in successfully")
+            st.rerun()
+        else:
+            st.error("Invalid credentials")

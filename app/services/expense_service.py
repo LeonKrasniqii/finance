@@ -1,33 +1,42 @@
-# app/services/expense_service.py
-
-from app.database.db_connection import get_db
-from app.models.expense import Expense
+from app.database.db_connection import get_db_connection
 
 
 def add_expense(user_id, category_id, amount, description, date):
-    with get_db() as db:
-        cursor = db.cursor()
-        cursor.execute(
-            """
-            INSERT INTO expenses (user_id, category_id, amount, description, date)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (user_id, category_id, amount, description, date)
-        )
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO expenses (user_id, category_id, amount, description, date)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (user_id, category_id, amount, description, date)
+    )
+
+    conn.commit()
+    conn.close()
 
 
-def get_user_expenses(user_id):
-    with get_db() as db:
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM expenses WHERE user_id=?", (user_id,))
-        rows = cursor.fetchall()
-        return [
-            Expense(
-                r["id"],
-                r["user_id"],
-                r["category_id"],
-                r["amount"],
-                r["description"],
-                r["date"]
-            ) for r in rows
-        ]
+def get_expenses_by_user(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            e.id,
+            c.name AS category,
+            e.amount,
+            e.description,
+            e.date
+        FROM expenses e
+        JOIN categories c ON e.category_id = c.id
+        WHERE e.user_id = ?
+        ORDER BY e.date DESC
+        """,
+        (user_id,)
+    )
+
+    expenses = cursor.fetchall()
+    conn.close()
+    return expenses

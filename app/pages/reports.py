@@ -1,18 +1,19 @@
 import streamlit as st
-import requests
-import pandas as pd
+from app.services.expense_service import get_expenses_by_user
 
-st.set_page_config(page_title="Reports")
+def show():
+    st.title("📈 Reports")
 
-st.title("📈 Expense Reports")
+    if "user" not in st.session_state or not st.session_state["user"]:
+        st.warning("Please login first")
+        return
 
-user_id = st.number_input("User ID", min_value=1)
+    user_id = st.session_state["user"]["id"]
+    expenses = get_expenses_by_user(user_id)
 
-if st.button("Generate Report"):
-    response = requests.get(f"http://127.0.0.1:8000/reports/expenses/{user_id}")
-    if response.status_code == 200:
-        data = response.json()
-        df = pd.DataFrame(list(data.items()), columns=["Category", "Total"])
-        st.bar_chart(df.set_index("Category"))
-    else:
-        st.error("Could not generate report")
+    if not expenses:
+        st.info("No expenses to report.")
+        return
+
+    st.subheader("All Expenses")
+    st.table(expenses)

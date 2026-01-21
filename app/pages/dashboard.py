@@ -1,17 +1,20 @@
 import streamlit as st
-import requests
+from app.services.expense_service import get_expenses_by_user
 
-st.set_page_config(page_title="Dashboard")
+def show():
+    st.title("📊 Dashboard")
 
-st.title("📊 Dashboard")
+    if "user" not in st.session_state or not st.session_state["user"]:
+        st.warning("Please login first")
+        return
 
-if "token" not in st.session_state:
-    st.warning("Please login first")
-    st.stop()
+    user_id = st.session_state["user"]["id"]
 
-user_id = st.number_input("Your User ID", min_value=1)
+    expenses = get_expenses_by_user(user_id)
 
-if st.button("View Expenses"):
-    response = requests.get(f"http://127.0.0.1:8000/expenses/{user_id}")
-    if response.status_code == 200:
-        st.table(response.json())
+    if not expenses:
+        st.info("No expenses found.")
+        return
+
+    st.subheader("Your Expenses")
+    st.table(expenses)
