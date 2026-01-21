@@ -1,14 +1,16 @@
-from fastapi import FastAPI
-from app.routers import add_expense, dashboard, login, register, reports
-from app.utils.error_handler import validation_exception_handler
-from fastapi.exceptions import RequestValidationError
+from flask import Flask
+from config import Config
 
-app = FastAPI()
+from app.pages.login import login_bp
+from app.pages.register import register_bp
+from app.pages.dashboard import dashboard_bp
 
-app.include_router(add_expense.router, prefix="/api")
-app.include_router(dashboard.router, prefix="/api")
-app.include_router(login.router, prefix="/api")
-app.include_router(register.router, prefix="/api")
-app.include_router(reports.router, prefix="/api")
+app = Flask(__name__)
+app.config.from_object(Config)
 
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.register_blueprint(login_bp)
+app.register_blueprint(register_bp)
+app.register_blueprint(dashboard_bp)
+
+if __name__ == "__main__":
+    app.run(debug=True)

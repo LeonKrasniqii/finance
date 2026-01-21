@@ -1,9 +1,10 @@
-import plotly.express as px
+import matplotlib.pyplot as plt
 
-def monthly_spending_chart(df):
-    fig = px.bar(df, x="month", y="amount", title="Monthly Spending")
-    return fig.to_json()
+def expense_chart(expenses):
+    categories = {}
+    for e in expenses:
+        categories[e["category"]] = categories.get(e["category"], 0) + e["amount"]
 
-def spending_by_category_chart(df):
-    fig = px.pie(df, names="category_id", values="amount", title="Spending by Category")
-    return fig.to_json()
+    plt.bar(categories.keys(), categories.values())
+    plt.title("Expenses by Category")
+    plt.show()

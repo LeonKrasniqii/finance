@@ -1,6 +1,5 @@
-from pydantic import validator
+def validate_email(email: str) -> bool:
+    return "@" in email and "." in email
 
-def validate_positive(value: float) -> float:
-    if value <= 0:
-        raise ValueError("Must be positive")
-    return value
+def validate_password(password: str) -> bool:
+    return len(password) >= 6

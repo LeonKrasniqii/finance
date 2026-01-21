@@ -1,127 +1,60 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
-from app.database.db_connection import get_db_connection
-from pydantic import BaseModel
-from datetime import datetime
+# app/routers/admin_routes.py
+
+from fastapi import APIRouter, HTTPException
+from app.database.db_connection import get_db
+from app.services.auth_service import decode_token
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-# Pydantic 
-class UserResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    role: str
-    created_at: datetime
 
-class ExpenseResponse(BaseModel):
-    id: int
-    user_id: int
-    title: str
-    amount: float
-    category: str
-    date: datetime
-
-
-
-# USER MANAGEMENT
-
-@router.get("/users", response_model=List[UserResponse])
-def get_all_users():
+def admin_required(token: str):
     """
-    Get a list of all users in the system.
+    Simple role-based authorization check
     """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id, name, email, role, created_at FROM users")
-    users = cursor.fetchall()
-    conn.close()
-
-    return [dict(user) for user in users]
+    payload = decode_token(token)
+    if payload.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return payload
 
 
-@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int):
-    """
-    Delete a user by ID. Be careful!
-    """
-    conn = get_db_connection()
-    cursor = conn.cursor()
+@router.get("/users")
+def get_all_users(token: str):
+    admin_required(token)
 
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
+    with get_db() as db:
+        cursor = db.cursor()
+        cursor.execute("SELECT id, username, email, role FROM users")
+        users = cursor.fetchall()
 
-    return
+    return [dict(u) for u in users]
 
 
+@router.get("/expenses")
+def get_all_expenses(token: str):
+    admin_required(token)
 
-# EXPENSE MANAGEMENT
+    with get_db() as db:
+        cursor = db.cursor()
+        cursor.execute("""
+            SELECT expenses.id, users.username, categories.name AS category,
+                   expenses.amount, expenses.description, expenses.date
+            FROM expenses
+            JOIN users ON expenses.user_id = users.id
+            JOIN categories ON expenses.category_id = categories.id
+        """)
+        expenses = cursor.fetchall()
 
-@router.get("/expenses", response_model=List[ExpenseResponse])
-def get_all_expenses():
-    """
-    Get all expenses across all users.
-    """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM expenses ORDER BY date DESC")
-    expenses = cursor.fetchall()
-    conn.close()
-
-    return [dict(expense) for expense in expenses]
-
-
-@router.delete("/expenses/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_expense(expense_id: int):
-    """
-    Delete any expense by ID.
-    """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
-    conn.commit()
-    conn.close()
-
-    return
+    return [dict(e) for e in expenses]
 
 
+@router.delete("/expenses/{expense_id}")
+def delete_expense(expense_id: int, token: str):
+    admin_required(token)
 
-# ADMIN REPORTS
+    with get_db() as db:
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM expenses WHERE id=?", (expense_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Expense not found")
 
-@router.get("/reports/total")
-def get_system_total_expenses():
-    """
-    Get total expenses across all users.
-    """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT SUM(amount) as total FROM expenses")
-    result = cursor.fetchone()
-    conn.close()
-
-    total = result["total"] if result["total"] is not None else 0
-    return {"total_expenses": total}
-
-
-@router.get("/reports/category")
-def get_system_expenses_by_category():
-    """
-    Get total expenses grouped by category across all users.
-    """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT category, SUM(amount) as total
-        FROM expenses
-        GROUP BY category
-    """)
-    result = cursor.fetchall()
-    conn.close()
-
-    return {"category_totals": [dict(row) for row in result]}
+    return {"message": "Expense deleted successfully"}

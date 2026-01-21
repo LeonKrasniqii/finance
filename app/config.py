@@ -1,12 +1,7 @@
 import os
-from pydantic import BaseSettings
 
-class Settings(BaseSettings):
-    DATABASE_URL: str = "sqlite:///./finance.db"
-    SECRET_KEY: str = "your-secret-key"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-    class Config:
-        env_file = ".env"
-
-settings = Settings()
+class Config:
+    SECRET_KEY = "dev-secret-key"
+    DATABASE = os.path.join(BASE_DIR, "finance.db")

@@ -1,90 +1,25 @@
-import bcrypt
-from fastapi import APIRouter, HTTPException, status
-from app.database.db_connection import get_db_connection
+# app/routers/auth_routes.py
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+from fastapi import APIRouter, HTTPException
+from app.services.auth_service import create_user, authenticate_user, create_access_token
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-def register_user(name: str, email: str, password: str):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # email
-    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
-    existing_user = cursor.fetchone()
-
-    if existing_user:
-        conn.close()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-
-    #  password
-    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-
-    cursor.execute("""
-        INSERT INTO users (name, email, password)
-        VALUES (?, ?, ?)
-    """, (name, email, hashed_password.decode("utf-8")))
-
-    conn.commit()
-    conn.close()
-
-    return {"message": "User registered successfully"}
+@router.post("/register")
+def register(username: str, email: str, password: str):
+    try:
+        create_user(username, email, password)
+        return {"message": "User registered successfully"}
+    except Exception:
+        raise HTTPException(status_code=400, detail="User already exists")
 
 
 @router.post("/login")
-def login_user(email: str, password: str):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, password FROM users WHERE email = ?
-    """, (email,))
-    user = cursor.fetchone()
-    conn.close()
-
+def login(username: str, password: str):
+    user = authenticate_user(username, password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    stored_password = user["password"]
-
-    if not bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-
-    return {
-        "message": "Login successful",
-        "user_id": user["id"]
-    }
-
-
-
-@router.get("/user/{user_id}")
-def get_user(user_id: int):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, name, email, role, created_at
-        FROM users
-        WHERE id = ?
-    """, (user_id,))
-
-    user = cursor.fetchone()
-    conn.close()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return dict(user)
-
-
-
+    token = create_access_token(user)
+    return {"access_token": token, "token_type": "bearer"}

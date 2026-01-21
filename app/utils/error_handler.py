@@ -1,10 +1,4 @@
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from fastapi.exception_handlers import RequestValidationError
-from fastapi import status
+from flask import jsonify
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": exc.errors(), "body": exc.body}
-    )
+def handle_error(message, code=400):
+    return jsonify({"error": message}), code
