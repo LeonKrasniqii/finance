@@ -1,18 +1,34 @@
-# app/routers/expense_routes.py
-
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.services.expense_service import add_expense, get_user_expenses
+from app.models.expense import ExpenseCreate, ExpenseResponse
+from typing import List
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
 
-@router.post("/")
-def create_expense(user_id: int, category_id: int, amount: float, description: str, date: str):
-    add_expense(user_id, category_id, amount, description, date)
-    return {"message": "Expense added"}
+# --- Create a new expense ---
+@router.post("/", response_model=ExpenseResponse)
+def create_expense(expense: ExpenseCreate):
+    """
+    Add a new expense
+    """
+    try:
+        expense_id = add_expense(
+            user_id=expense.user_id,
+            category_id=expense.category_id,
+            amount=expense.amount,
+            description=expense.description,
+            date=expense.date
+        )
+        # Return full ExpenseResponse
+        return ExpenseResponse(id=expense_id, **expense.model_dump())
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{user_id}")
+# --- List expenses for a user ---
+@router.get("/{user_id}", response_model=List[ExpenseResponse])
 def list_expenses(user_id: int):
     expenses = get_user_expenses(user_id)
-    return [e.to_dict() for e in expenses]
+    # Expenses should already be Pydantic models
+    return expenses

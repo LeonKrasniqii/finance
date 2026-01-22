@@ -1,29 +1,17 @@
-# app/models/income.py
+from pydantic import BaseModel, Field
+from datetime import date
 
-class Income:
-    """
-    Income model
-    """
+class IncomeBase(BaseModel):
+    user_id: int = Field(..., gt=0)
+    source: str = Field(..., min_length=1, max_length=100)
+    amount: float = Field(..., gt=0)
+    date: date
 
-    def __init__(
-        self,
-        id: int,
-        user_id: int,
-        source: str,
-        amount: float,
-        date: str
-    ):
-        self.id = id
-        self.user_id = user_id
-        self.source = source
-        self.amount = amount
-        self.date = date
+class IncomeCreate(IncomeBase):
+    pass
 
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "source": self.source,
-            "amount": self.amount,
-            "date": self.date
-        }
+class IncomeResponse(IncomeBase):
+    id: int
+
+class Income(IncomeBase):
+    id: int

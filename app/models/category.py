@@ -1,4 +1,13 @@
-class Category:
-    def __init__(self, id: int, name: str):
-        self.id = id
-        self.name = name
+from pydantic import BaseModel, Field
+
+class CategoryBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryResponse(CategoryBase):
+    id: int
+
+class Category(CategoryBase):
+    id: int

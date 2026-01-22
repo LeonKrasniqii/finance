@@ -1,26 +1,42 @@
 from app.database.db_connection import get_db_connection
-from app.models.category import Category
+from app.models.category import CategoryCreate, CategoryResponse
+from fastapi import HTTPException
+from typing import List
 
 
-def get_all_categories():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+# --- Get all categories ---
+def get_all_categories() -> List[CategoryResponse]:
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name FROM categories ORDER BY name")
+            rows = cursor.fetchall()
 
-    cursor.execute("SELECT id, name FROM categories ORDER BY name")
-    rows = cursor.fetchall()
-    conn.close()
+        # Convert rows to Pydantic models
+        return [CategoryResponse(id=row[0], name=row[1]) for row in rows]
 
-    return [Category(row["id"], row["name"]) for row in rows]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-def add_category(name: str):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+# --- Add a new category ---
+def add_category(category: CategoryCreate) -> CategoryResponse:
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR IGNORE INTO categories (name) VALUES (?)",
+                (category.name,)
+            )
+            conn.commit()
 
-    cursor.execute(
-        "INSERT OR IGNORE INTO categories (name) VALUES (?)",
-        (name,)
-    )
+            # Return the newly added category
+            cursor.execute("SELECT id, name FROM categories WHERE name=?", (category.name,))
+            row = cursor.fetchone()
+            if row:
+                return CategoryResponse(id=row[0], name=row[1])
+            else:
+                raise HTTPException(status_code=500, detail="Failed to add category")
 
-    conn.commit()
-    conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

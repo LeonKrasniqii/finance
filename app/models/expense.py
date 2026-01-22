@@ -1,32 +1,18 @@
-# app/models/expense.py
+from pydantic import BaseModel, Field
+from datetime import date
 
-class Expense:
-    """
-    Expense model
-    """
+class ExpenseBase(BaseModel):
+    user_id: int = Field(..., gt=0)
+    category_id: int = Field(..., gt=0)
+    amount: float = Field(..., gt=0)
+    description: str = Field(..., min_length=1, max_length=255)
+    date: date
 
-    def __init__(
-        self,
-        id: int,
-        user_id: int,
-        category_id: int,
-        amount: float,
-        description: str,
-        date: str
-    ):
-        self.id = id
-        self.user_id = user_id
-        self.category_id = category_id
-        self.amount = amount
-        self.description = description
-        self.date = date
+class ExpenseCreate(ExpenseBase):
+    pass
 
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "category_id": self.category_id,
-            "amount": self.amount,
-            "description": self.description,
-            "date": self.date
-        }
+class ExpenseResponse(ExpenseBase):
+    id: int
+
+class Expense(ExpenseBase):
+    id: int

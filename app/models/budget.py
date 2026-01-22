@@ -1,26 +1,20 @@
-# app/models/budget.py
+from pydantic import BaseModel, Field
+from typing import Optional
 
-class Budget:
-    """
-    Budget model
-    """
+# Base model: shared fields
+class BudgetBase(BaseModel):
+    user_id: int = Field(..., gt=0)
+    category_id: int = Field(..., gt=0)
+    monthly_limit: float = Field(..., gt=0)
 
-    def __init__(
-        self,
-        id: int,
-        user_id: int,
-        category_id: int,
-        monthly_limit: float
-    ):
-        self.id = id
-        self.user_id = user_id
-        self.category_id = category_id
-        self.monthly_limit = monthly_limit
+# Model used when creating a budget
+class BudgetCreate(BudgetBase):
+    pass
 
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "category_id": self.category_id,
-            "monthly_limit": self.monthly_limit
-        }
+# Model returned in responses (with ID)
+class BudgetResponse(BudgetBase):
+    id: int
+
+# Full model including ID (for internal/domain use)
+class Budget(BudgetBase):
+    id: int
