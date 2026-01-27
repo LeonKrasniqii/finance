@@ -1,0 +1,12 @@
+# server.py at the root (finance/server.py)
+from fastapi import FastAPI
+from app.routers import admin_routes  # Make sure this works in step 2
+
+app = FastAPI(title="Finance App API")
+
+# Include admin router
+app.include_router(admin_routes.router)
+
+@app.get("/")
+def root():
+    return {"message": "Finance API is running"}

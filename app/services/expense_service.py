@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from typing import List
 
 
-# --- Add a new expense ---
+# --- Add a new expense (API-style) ---
 def add_expense(expense: ExpenseCreate) -> int:
     """
     Inserts a new expense into the database.
@@ -18,12 +18,39 @@ def add_expense(expense: ExpenseCreate) -> int:
                 INSERT INTO expenses (user_id, category_id, amount, description, date)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (expense.user_id, expense.category_id, expense.amount, expense.description, expense.date)
+                (
+                    expense.user_id,
+                    expense.category_id,
+                    expense.amount,
+                    expense.description,
+                    expense.date,
+                )
             )
             conn.commit()
             return cursor.lastrowid
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Streamlit-friendly wrapper ---
+def add_expense_from_ui(
+    user_id: int,
+    category_id: int,
+    amount: float,
+    description: str,
+    date: str,
+) -> int:
+    """
+    Wrapper for Streamlit UI calls.
+    """
+    expense = ExpenseCreate(
+        user_id=user_id,
+        category_id=category_id,
+        amount=amount,
+        description=description,
+        date=date,
+    )
+    return add_expense(expense)
 
 
 # --- Get all expenses for a user ---
@@ -45,7 +72,6 @@ def get_user_expenses(user_id: int) -> List[ExpenseResponse]:
             )
             rows = cursor.fetchall()
 
-        # Convert raw rows to Pydantic models
         return [
             ExpenseResponse(
                 id=row[0],
@@ -53,7 +79,7 @@ def get_user_expenses(user_id: int) -> List[ExpenseResponse]:
                 category_id=row[2],
                 amount=row[3],
                 description=row[4],
-                date=row[5]
+                date=row[5],
             )
             for row in rows
         ]

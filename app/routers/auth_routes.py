@@ -1,5 +1,5 @@
-from app.database.db_connection import get_db_connection
-from app.models.user import UserResponse
+from database.db_connection import get_db_connection
+from models.user import UserResponse
 import hashlib
 from fastapi import HTTPException
 
