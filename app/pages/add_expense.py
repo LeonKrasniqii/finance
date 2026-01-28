@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date
-from app.services.expense_service import add_expense
+from app.services.expense_service import add_expense_from_ui
 from app.services.category_service import get_all_categories
 
 def show():
@@ -24,11 +24,11 @@ def show():
     expense_date = st.date_input("Date", value=date.today())
 
     if st.button("Add Expense"):
-        add_expense(
-            st.session_state["user"]["id"],
-            category_map[category_name],
-            amount,
-            description,
-            expense_date.isoformat()
+        add_expense_from_ui(
+            user_id=st.session_state["user"]["id"],
+            category_id=category_map[category_name],
+            amount=amount,
+            description=description,
+            date=expense_date.isoformat(),
         )
         st.success("Expense added successfully ✅")

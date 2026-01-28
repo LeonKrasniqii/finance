@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Header
-from app.database.db_connection import get_db
-from app.services.auth_service import decode_token
+from app.database.db_connection import get_db_connection
 from app.models.user import UserResponse
 from app.models.expense import ExpenseResponse
 from typing import List
@@ -10,9 +9,6 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 # --- Helper to extract token from Authorization header ---
 def get_token(authorization: str = Header(...)):
-    """
-    Extracts token from Authorization header
-    """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
     return authorization.split(" ")[1]
@@ -29,27 +25,22 @@ def admin_required(token: str = Depends(get_token)):
 # --- Routes ---
 @router.get("/users", response_model=List[UserResponse])
 def get_all_users(payload: dict = Depends(admin_required)):
-    with get_db() as db:
+    with get_db_connection() as db:
         cursor = db.cursor()
         cursor.execute("SELECT id, username, email, role FROM users")
         users = cursor.fetchall()
-
-    # Convert raw tuples to Pydantic models
     return [UserResponse(id=u[0], username=u[1], email=u[2], role=u[3]) for u in users]
 
 
 @router.get("/expenses", response_model=List[ExpenseResponse])
 def get_all_expenses(payload: dict = Depends(admin_required)):
-    with get_db() as db:
+    with get_db_connection() as db:
         cursor = db.cursor()
         cursor.execute("""
-            SELECT expenses.id, expenses.user_id, expenses.category_id, 
-                   expenses.amount, expenses.description, expenses.date
+            SELECT id, user_id, category_id, amount, description, date
             FROM expenses
         """)
         expenses = cursor.fetchall()
-
-    # Convert tuples to Pydantic models
     return [
         ExpenseResponse(
             id=e[0],
@@ -64,11 +55,10 @@ def get_all_expenses(payload: dict = Depends(admin_required)):
 
 @router.delete("/expenses/{expense_id}")
 def delete_expense(expense_id: int, payload: dict = Depends(admin_required)):
-    with get_db() as db:
+    with get_db_connection() as db:
         cursor = db.cursor()
         cursor.execute("DELETE FROM expenses WHERE id=?", (expense_id,))
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Expense not found")
         db.commit()
-
     return {"message": "Expense deleted successfully"}
