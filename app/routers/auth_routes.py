@@ -8,7 +8,7 @@ from app.database.db_connection import get_db_connection
 from app.models.user import UserResponse
 
 # --- JWT config ---
-SECRET_KEY = "your-super-secret-key"  # Change in production
+SECRET_KEY = "whfjhwjlhfdkahfl"  # Change in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 

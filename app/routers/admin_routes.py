@@ -8,7 +8,7 @@ from jwt import ExpiredSignatureError, InvalidTokenError
 from app.routers.auth_routes import decode_access_token
 
 
-SECRET_KEY = "your_secret_key_here"  # Replace with your actual secret key
+SECRET_KEY = "whfjhwjlhfdkahfl"  # Replace with your actual secret key
 ALGORITHM = "HS256"
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -33,7 +33,7 @@ def decode_token(token: str):
 
 # --- Dependency to enforce admin role ---
 def admin_required(token: str = Depends(get_token)):
-    payload = decode_token(token)
+    payload = decode_access_token(token)
     if payload.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return payload
