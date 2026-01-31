@@ -11,7 +11,7 @@ def show():
 
     user_id = st.session_state["user"]["id"]
 
-    # Fetch expenses using the updated service
+    # Fetch expenses using the service
     expenses = get_user_expenses(user_id)
 
     if not expenses:

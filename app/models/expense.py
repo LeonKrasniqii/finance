@@ -11,8 +11,11 @@ class ExpenseBase(BaseModel):
 class ExpenseCreate(ExpenseBase):
     pass
 
-class ExpenseResponse(ExpenseBase):
-    id: int
+class ExpenseUpdate(BaseModel):
+    category_id: int = Field(..., gt=0)
+    amount: float = Field(..., gt=0)
+    description: str = Field(..., min_length=1, max_length=255)
+    date: date
 
-class Expense(ExpenseBase):
+class ExpenseResponse(ExpenseBase):
     id: int

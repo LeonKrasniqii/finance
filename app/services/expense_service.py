@@ -3,13 +3,8 @@ from app.models.expense import ExpenseCreate, ExpenseResponse
 from fastapi import HTTPException
 from typing import List
 
-
-# --- Add a new expense (API-style) ---
-def add_expense(expense: ExpenseCreate) -> int:
-    """
-    Inserts a new expense into the database.
-    Returns the new expense ID.
-    """
+# --- Add a new expense (used by Streamlit) ---
+def add_expense_from_ui(user_id: int, category_id: int, amount: float, description: str, date: str) -> int:
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
@@ -18,46 +13,15 @@ def add_expense(expense: ExpenseCreate) -> int:
                 INSERT INTO expenses (user_id, category_id, amount, description, date)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (
-                    expense.user_id,
-                    expense.category_id,
-                    expense.amount,
-                    expense.description,
-                    expense.date,
-                )
+                (user_id, category_id, amount, description, date)
             )
             conn.commit()
             return cursor.lastrowid
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# --- Streamlit-friendly wrapper ---
-def add_expense_from_ui(
-    user_id: int,
-    category_id: int,
-    amount: float,
-    description: str,
-    date: str,
-) -> int:
-    """
-    Wrapper for Streamlit UI calls.
-    """
-    expense = ExpenseCreate(
-        user_id=user_id,
-        category_id=category_id,
-        amount=amount,
-        description=description,
-        date=date,
-    )
-    return add_expense(expense)
-
-
-# --- Get all expenses for a user ---
+# --- Get all expenses for a user (used by dashboard) ---
 def get_user_expenses(user_id: int) -> List[ExpenseResponse]:
-    """
-    Returns all expenses for a given user as a list of ExpenseResponse models.
-    """
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
