@@ -1,12 +1,18 @@
 import streamlit as st
-from app.services.auth_service import login_user
-from fastapi import HTTPException
+import requests
+
+API_URL = "http://127.0.0.1:8000/auth"  # FastAPI auth router
 
 def show():
     st.title("🔐 Login")
 
+    # Initialize session state
     if "user" not in st.session_state:
         st.session_state["user"] = None
+    if "token" not in st.session_state:
+        st.session_state["token"] = None
+    if "_rerun_flag" not in st.session_state:
+        st.session_state["_rerun_flag"] = 0
 
     username = st.text_input("Username", key="login_username")
     password = st.text_input("Password", type="password", key="login_password")
@@ -17,18 +23,26 @@ def show():
             return
 
         try:
-            user = login_user(username, password)
+            response = requests.post(
+                f"{API_URL}/login",
+                json={"username": username, "password": password}
+            )
 
-            st.session_state["user"] = {
-                "id": user.id,
-                "username": user.username,
-            }
+            if response.status_code == 200:
+                data = response.json()
+                st.session_state["user"] = data["user"]
+                st.session_state["token"] = data.get("access_token", None)
 
-            st.success("Logged in successfully ✅")
-            st.rerun()
+                st.success(f"Logged in successfully ✅ Welcome, {username}")
 
-        except HTTPException as e:
-            st.error(e.detail)
+                # Modern way to force rerun: toggle a dummy session_state key
+                st.session_state["_rerun_flag"] += 1
 
-        except Exception:
-            st.error("Something went wrong. Please try again.")
+            else:
+                st.error(response.json().get("detail", "Login failed"))
+
+        except Exception as e:
+            st.error(f"Error connecting to server: {e}")
+
+    # Force rerun when _rerun_flag changes
+    _ = st.session_state.get("_rerun_flag")

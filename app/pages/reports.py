@@ -1,6 +1,6 @@
 import streamlit as st
-from app.services.expense_service import get_user_expenses
-from app.services.analysis_service import expense_summary
+import requests
+from config import API_BASE_URL
 
 def show():
     st.title("📈 Expense Reports")
@@ -9,24 +9,42 @@ def show():
         st.warning("Please login first")
         return
 
-    user_id = st.session_state["user"]["id"]
+    user = st.session_state["user"]
+    headers = {
+        "x-user-id": str(user["id"]),  # header must be string
+        "Authorization": f"Bearer {user.get('access_token', '')}"
+    }
 
-    # Fetch user expenses
-    expenses = get_user_expenses(user_id)
+    # Fetch user expenses from API
+    try:
+        response = requests.get(f"{API_BASE_URL}/expenses/me", headers=headers, timeout=10)
 
-    if not expenses:
-        st.info("No expenses to summarize.")
+        if response.status_code != 200:
+            st.error(f"Failed to fetch expenses: {response.json().get('detail', response.text)}")
+            return
+
+        expenses = response.json()
+        if not expenses:
+            st.info("No expenses to summarize.")
+            return
+
+    except requests.RequestException as e:
+        st.error(f"Error connecting to API: {str(e)}")
         return
 
     # Show all expenses
     st.subheader("All Expenses")
-    st.table([e.model_dump() for e in expenses])
+    st.table(expenses)
 
-    # Show summary by category
+    # Summary by category
     st.subheader("Summary by Category")
-    summary = expense_summary(expenses)
+    summary = {}
+    for e in expenses:
+        cat = e.get("category_id")
+        summary[cat] = summary.get(cat, 0) + float(e.get("amount", 0))
+
     st.table([{"Category": cat, "Total Amount": amt} for cat, amt in summary.items()])
 
-    # Optional: show total expenses
+    # Optional: total
     total = sum(summary.values())
     st.write(f"**Total Expenses:** ${total:.2f}")
