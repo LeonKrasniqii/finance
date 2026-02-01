@@ -10,8 +10,9 @@ from app.routers.auth_routes import router as auth_router
 from app.routers.admin_routes import router as admin_router
 from app.routers.category_routers import router as category_router
 from app.routers.expense_routes import router as expense_router
-from app.routers.report_routes import router as report_router
 from app.routers.budget_routers import router as budget_router
+from app.routers.report_routes import router as report_router
+
 
 app = FastAPI()
 
