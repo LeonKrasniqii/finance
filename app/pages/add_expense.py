@@ -1,34 +1,33 @@
 import streamlit as st
+import requests
 from datetime import date
-from app.services.expense_service import add_expense_from_ui
-from app.services.category_service import get_all_categories
+from config import API_BASE_URL
 
 def show():
     st.title("➕ Add Expense")
-
-    if "user" not in st.session_state or not st.session_state["user"]:
-        st.warning("Please login first")
+    if "user" not in st.session_state:
+        st.warning("Please login")
         return
 
-    categories = get_all_categories()
+    headers = {"Authorization": f"Bearer {st.session_state.get('access_token')}"}
+    
+    # Category loading logic
+    res = requests.get(f"{API_BASE_URL}/categories", headers=headers)
+    cat_map = {c['name']: c['id'] for c in res.json()} if res.status_code == 200 else {}
 
-    if not categories:
-        st.warning("No categories found. Please add categories first.")
-        return
-
-    category_map = {c.name: c.id for c in categories}
-
-    category_name = st.selectbox("Category", list(category_map.keys()))
+    cat_name = st.selectbox("Category", list(cat_map.keys()))
     amount = st.number_input("Amount", min_value=0.01)
-    description = st.text_input("Description")
-    expense_date = st.date_input("Date", value=date.today())
+    desc = st.text_input("Description")
+    dt = st.date_input("Date", value=date.today())
 
     if st.button("Add Expense"):
-        add_expense_from_ui(
-            user_id=st.session_state["user"]["id"],
-            category_id=category_map[category_name],
-            amount=amount,
-            description=description,
-            date=expense_date.isoformat(),
-        )
-        st.success("Expense added successfully ✅")
+        payload = {
+            "user_id": st.session_state["user"]["id"],
+            "category_id": cat_map[cat_name],
+            "amount": amount,
+            "description": desc,
+            "date": dt.isoformat()
+        }
+        r = requests.post(f"{API_BASE_URL}/expenses/", json=payload, headers=headers)
+        if r.status_code == 200: st.success("Added!")
+        else: st.error(f"Error: {r.text}")

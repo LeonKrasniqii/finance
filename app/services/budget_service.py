@@ -1,43 +1,33 @@
-from app.database.db_connection import get_db
-from app.models.budget import BudgetCreate, BudgetResponse
-from fastapi import HTTPException
-from typing import List
+from app.database.db_connection import get_db_connection
 
+def upsert_budget(user_id: int, category_id: int, limit: float):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # SQLite 'UPSERT' syntax
+        query = """
+            INSERT INTO budgets (user_id, category_id, monthly_limit)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id, category_id) 
+            DO UPDATE SET monthly_limit = excluded.monthly_limit
+        """
+        cursor.execute(query, (user_id, category_id, limit))
+        conn.commit()
+        return True
 
-# --- Set or update a budget ---
-def set_budget(budget: BudgetCreate) -> BudgetResponse:
-    try:
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.execute(
-                """
-                INSERT OR REPLACE INTO budgets (user_id, category_id, monthly_limit)
-                VALUES (?, ?, ?)
-                """,
-                (budget.user_id, budget.category_id, budget.monthly_limit)
-            )
-            db.commit()
-
-            # SQLite doesn't return lastrowid for REPLACE if updating, so we just return the budget
-            return BudgetResponse(id=None, **budget.model_dump())  # id can be None or fetch separately
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --- Get budgets for a user ---
-def get_budgets(user_id: int) -> List[BudgetResponse]:
-    try:
-        with get_db() as db:
-            cursor = db.cursor()
-            cursor.execute(
-                "SELECT id, user_id, category_id, monthly_limit FROM budgets WHERE user_id=?", (user_id,)
-            )
-            rows = cursor.fetchall()
-
-        # Convert raw rows to Pydantic models
-        return [
-            BudgetResponse(id=row[0], user_id=row[1], category_id=row[2], monthly_limit=row[3])
-            for row in rows
-        ]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def get_user_budgets(user_id: int):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Fetch monthly_limit from DB, but return it as 'amount' for the UI
+        cursor.execute("SELECT category_id, monthly_limit FROM budgets WHERE user_id = ?", (user_id,))
+        rows = cursor.fetchall()
+        return [{"category_id": r[0], "amount": r[1]} for r in rows]
+    
+def remove_budget(user_id: int, category_id: int):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM budgets WHERE user_id = ? AND category_id = ?", 
+            (user_id, category_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0

@@ -1,21 +1,18 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import date
 
-class ExpenseBase(BaseModel):
-    user_id: int = Field(..., gt=0)
-    category_id: int = Field(..., gt=0)
-    amount: float = Field(..., gt=0)
-    description: str = Field(..., min_length=1, max_length=255)
+class ExpenseCreate(BaseModel):
+    user_id: int
+    category_id: int
+    amount: float
+    description: str
     date: date
 
-class ExpenseCreate(ExpenseBase):
-    pass
+class ExpenseResponse(ExpenseCreate):
+    id: int
 
 class ExpenseUpdate(BaseModel):
-    category_id: int = Field(..., gt=0)
-    amount: float = Field(..., gt=0)
-    description: str = Field(..., min_length=1, max_length=255)
+    category_id: int
+    amount: float
+    description: str
     date: date
-
-class ExpenseResponse(ExpenseBase):
-    id: int

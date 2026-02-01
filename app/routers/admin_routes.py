@@ -1,78 +1,54 @@
-from fastapi import APIRouter, HTTPException, Depends, Header
-from app.database.db_connection import get_db_connection
-from app.models.user import UserResponse
-from app.models.expense import ExpenseResponse
-from typing import List
-import jwt
-from jwt import ExpiredSignatureError, InvalidTokenError
+from fastapi import APIRouter, Depends, HTTPException, Header
 from app.routers.auth_routes import decode_access_token
-
-
-SECRET_KEY = "whfjhwjlhfdkahfl"  # Replace with your actual secret key
-ALGORITHM = "HS256"
+from app.database.db_connection import get_db_connection
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-# --- Helper to extract token from Authorization header ---
-def get_token(authorization: str = Header(...)):
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    return authorization.split(" ")[1]
-
-
-# --- Decode JWT token ---
-def decode_token(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
-    except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-# --- Dependency to enforce admin role ---
-def admin_required(token: str = Depends(get_token)):
+def verify_admin(authorization: str = Header(None)):
+    if not authorization:
+        # This matches the error you were seeing in Swagger
+        raise HTTPException(status_code=401, detail="No token provided")
+    
+    # Cleans "Bearer " prefix if present before decoding
+    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
     payload = decode_access_token(token)
-    if payload.get("role") != "admin":
+    
+    if not payload or payload.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return payload
 
-# --- Routes ---
-@router.get("/users", response_model=List[UserResponse])
-def get_all_users(payload: dict = Depends(admin_required)):
-    with get_db_connection() as db:
-        cursor = db.cursor()
+@router.get("/users")
+def get_all_users(admin_data=Depends(verify_admin)):
+    # FIXED: Instead of just a message, we now query the database
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Fetching all users from the users table
         cursor.execute("SELECT id, username, email, role FROM users")
-        users = cursor.fetchall()
-    return [UserResponse(id=u[0], username=u[1], email=u[2], role=u[3]) for u in users]
-
-@router.get("/expenses", response_model=List[ExpenseResponse])
-def get_all_expenses(payload: dict = Depends(admin_required)):
-    with get_db_connection() as db:
-        cursor = db.cursor()
-        cursor.execute("""
-            SELECT id, user_id, category_id, amount, description, date
-            FROM expenses
-        """)
-        expenses = cursor.fetchall()
-    return [
-        ExpenseResponse(
-            id=e[0],
-            user_id=e[1],
-            category_id=e[2],
-            amount=e[3],
-            description=e[4],
-            date=e[5]
-        ) for e in expenses
-    ]
-
-@router.delete("/expenses/{expense_id}")
-def delete_expense(expense_id: int, payload: dict = Depends(admin_required)):
-    with get_db_connection() as db:
-        cursor = db.cursor()
-        cursor.execute("DELETE FROM expenses WHERE id=?", (expense_id,))
-        if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Expense not found")
-        db.commit()
-    return {"message": "Expense deleted successfully"}
+        rows = cursor.fetchall()
+        
+        # Return the actual list of users
+        return [
+            {
+                "id": r[0],
+                "username": r[1],
+                "email": r[2],
+                "role": r[3]
+            } for r in rows
+        ]
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int, admin_data=Depends(verify_admin)):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Check if user exists before deleting
+        cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        # Perform the deletion
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        
+        return {"message": f"User '{user[0]}' (ID: {user_id}) has been deleted"}

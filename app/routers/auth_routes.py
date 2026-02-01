@@ -1,97 +1,55 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from datetime import datetime, timedelta
-import bcrypt
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel # FIXED
 import jwt
+from datetime import datetime, timedelta
+from app.services.auth_service import get_user_by_username, verify_password, create_user
 
-from app.database.db_connection import get_db_connection
-from app.models.user import UserResponse
-
-# --- JWT config ---
-SECRET_KEY = "whfjhwjlhfdkahfl"  # Change in production
+SECRET_KEY = "whfjhwjlhfdkahfl" 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 router = APIRouter(tags=["Auth"])
-
-# --- Request models ---
-class RegisterRequest(BaseModel):
-    username: str
-    email: str
-    password: str
 
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-# --- Password helpers ---
-def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode(), salt)
-    return hashed.decode()
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
 
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode(), hashed.encode())
-
-# --- JWT helpers ---
-def create_access_token(data: dict, expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def decode_access_token(token: str) -> dict:
+def decode_access_token(token: str):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception:
+        return None
 
-# --- Register route ---
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=2)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 @router.post("/register")
 def register(data: RegisterRequest):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    user_id = create_user(data.username, data.email, data.password)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User already exists")
+    return {"message": "Success", "user_id": user_id}
 
-    cursor.execute("SELECT id FROM users WHERE username = ? OR email = ?", (data.username, data.email))
-    if cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=400, detail="Username or email already exists")
-
-    hashed_password = hash_password(data.password)
-    cursor.execute(
-        "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-        (data.username, data.email, hashed_password)
-    )
-    conn.commit()
-    conn.close()
-    return {"message": "User registered successfully"}
-
-# --- Login route ---
 @router.post("/login")
 def login(data: LoginRequest):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    user = get_user_by_username(data.username)
+    if not user or not verify_password(data.password, user[3]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    cursor.execute(
-        "SELECT id, username, email, role, password FROM users WHERE username = ?",
-        (data.username,)
-    )
-    user = cursor.fetchone()
-    conn.close()
-
-    if not user or not verify_password(data.password, user[4]):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-
-    # Create JWT token
-    token_data = {"user_id": user[0], "username": user[1], "role": user[3]}
-    access_token = create_access_token(token_data)
-
+    token_payload = {"user_id": user[0], "username": user[1], "role": user[4]}
+    token = create_access_token(token_payload)
+    
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": UserResponse(id=user[0], username=user[1], email=user[2], role=user[3])
+        "access_token": token, 
+        "token_type": "bearer", 
+        "user": {"id": user[0], "username": user[1], "role": user[4]}
     }

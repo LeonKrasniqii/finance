@@ -19,3 +19,4 @@ def test_add_expense():
     response = client.post("/expenses", json=expense_data, headers=headers)
     assert response.status_code == 201
     assert "expense" in response.json()
+#nuk nevoiten
